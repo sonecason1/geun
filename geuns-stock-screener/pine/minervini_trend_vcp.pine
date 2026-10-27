@@ -1,0 +1,35 @@
+//@version=5
+// 미너비니 트렌드 템플릿 + 간이 VCP — TradingView 차트/파인 스크리너용
+indicator("Geun's Stock Screener - 트렌드 템플릿 + VCP", overlay=true)
+idxSym = input.symbol("KRX:KOSPI", "RS 비교 지수")
+ma50  = ta.sma(close, 50)
+ma150 = ta.sma(close, 150)
+ma200 = ta.sma(close, 200)
+hi52  = ta.highest(high, 252)
+lo52  = ta.lowest(low, 252)
+idx   = request.security(idxSym, timeframe.period, close)
+rs    = (close / close[126]) / (idx / idx[126])
+
+tt = close > ma150 and close > ma200 and ma150 > ma200 and ma200 > ma200[21] and
+     ma50 > ma150 and ma50 > ma200 and close > ma50 and close >= lo52 * 1.3 and close >= hi52 * 0.75 and rs > 1
+
+// 간이 VCP: 최근 3구간(각 10봉)의 고저 폭이 점점 줄고, 거래량이 마름
+r1 = (ta.highest(high, 10)[20] - ta.lowest(low, 10)[20]) / ta.highest(high, 10)[20]
+r2 = (ta.highest(high, 10)[10] - ta.lowest(low, 10)[10]) / ta.highest(high, 10)[10]
+r3 = (ta.highest(high, 10) - ta.lowest(low, 10)) / ta.highest(high, 10)
+volDry = ta.sma(volume, 10) < ta.sma(volume, 50) * 0.85
+vcp = tt and r1 > r2 and r2 > r3 and r3 < 0.12 and volDry
+pivot = ta.highest(high, 10)[1]
+breakout = vcp[1] and close > pivot and volume > ta.sma(volume, 50) * 1.4
+
+plot(ma50, "50일", color.orange)
+plot(ma150, "150일", color.blue)
+plot(ma200, "200일", color.red)
+bgcolor(tt ? color.new(color.green, 90) : na)
+plotshape(vcp and not vcp[1], "VCP", shape.diamond, location.belowbar, color.lime, size=size.tiny)
+plotshape(breakout, "돌파", shape.triangleup, location.belowbar, color.yellow, size=size.small)
+// 파인 스크리너에서 열로 보이는 값
+plot(tt ? 1 : 0, "트렌드템플릿", display=display.data_window)
+plot(vcp ? 1 : 0, "VCP", display=display.data_window)
+plot(r3 * 100, "최근 수축폭%", display=display.data_window)
+alertcondition(breakout, "VCP 돌파", "{{ticker}} VCP 피벗 돌파")
